@@ -194,49 +194,6 @@ app.get('/api/events/eventbrite', async (req, res) => {
   }
 });
 
-// Submit event
-app.post("/api/events/submit", async function (req, res) {
-  try {
-    const title = req.body.name;
-    const description = req.body.description;
-    const location = req.body.location;
-    const start_time = req.body.start_time;
-    const end_time = req.body.end_time;
-    const date = req.body.date;
-    const start = `${date}T${start_time}:00`;
-    const end = `${date}T${end_time}:00`;
-
-    if (!title || !start || !end) {
-      return res.status(400).json({ ok: false, error: "title, start, and end required" });
-    }
-
-    if (title.length > 200) {
-      return res.status(400).json({ ok: false, error: "title too long" });
-    }
-
-    const eventResource = {
-      summary: title,
-      description: description || "",
-      location: location || "",
-      start: { dateTime: new Date(start).toISOString() },
-      end: { dateTime: new Date(end).toISOString() }
-    };
-
-    const gEvent = await insertToCalendar(eventResource);
-    console.log("Created Google event:", gEvent.id, gEvent.htmlLink);
-
-    res.json({
-      ok: true,
-      googleEventId: gEvent.id,
-      htmlLink: gEvent.htmlLink
-    });
-  } catch (err) {
-    console.error("Insert error:", err && err.message ? err.message : err);
-    res.status(500).json({ ok: false, error: "failed to create event" });
-  }
-});
-
-
 // Sync Eventbrite events to Google Calendar
 app.post('/api/events/sync-eventbrite', async (req, res) => {
   try {
@@ -338,25 +295,6 @@ function parseEventDateTime(dateStr, timeStr) {
     return null;
   }
 }
-// admin-only: delete event by Google event id
-app.post("/api/admin/delete", async (req, res) => {
-  const token = req.get("x-admin-token");
-  if (!token || token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ ok: false, error: "unauthorized" });
-  }
-
-  const { googleEventId } = req.body;
-  if (!googleEventId) return res.status(400).json({ ok: false, error: "googleEventId required" });
-
-  try {
-    await deleteFromCalendar(googleEventId);
-    console.log("Deleted Google event:", googleEventId);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("Delete error:", err?.message || err);
-    res.status(500).json({ ok: false, error: "failed to delete event" });
-  }
-});
 
 app.get("/api/events/upcoming", async (req, res) => {
   try {
